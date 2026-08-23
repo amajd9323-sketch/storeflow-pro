@@ -642,6 +642,21 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
 </div><p class="hint" style="margin-top:8px">يُفضّل صورة مربعة صغيرة (أقل من 300×300) لسرعة التحميل.</p></div>
 </div>
 
+<!-- ✅ NEW: simple cashier permission lock — a local PIN that hides
+     settings/reports/audit/customers-balances-edit from whoever doesn't
+     know it, without touching the Supabase account system. -->
+<div class="section card"><h2>🔒 وضع الكاشير (صلاحيات مبسطة)</h2>
+<p class="sub">فعّل هاد الوضع لما تسلّم الجهاز لموظف الكاشير: بيقدر يبيع ويشوف المخزون بس، وما بيقدر يوصل للإعدادات أو التقارير أو حذف البيانات إلا بإدخال رمز المالك (PIN).</p>
+<div class="form" style="margin-top:10px">
+<div class="field"><label>رمز المالك (PIN من 4 أرقام)</label><input id="ownerPin" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+<div class="field"><label>الحالة الحالية</label><div class="pill" id="cashierModeStatus" style="margin-top:10px">غير مفعّل</div></div>
+</div>
+<div class="actions" style="margin-top:10px">
+<button class="btn primary" onclick="enableCashierMode()">🔒 تفعيل وضع الكاشير الآن</button>
+<button class="btn" onclick="disableCashierMode()">🔓 إلغاء وضع الكاشير (يتطلب PIN)</button>
+</div>
+</div>
+
 <!-- ✅ NEW: account/logout card, always visible (also on mobile) -->
 <div class="section card"><h2>👤 الحساب</h2>
 <div id="acctBoxMobile" class="acctBox" style="margin-top:8px"></div>
@@ -820,7 +835,62 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape') toggleMobileMenu(false);
 });
 
+const CASHIER_RESTRICTED_PAGES=['settings','reports','audit','suppliers','expenses'];
+function simpleHash(str){let h=0;for(let i=0;i<str.length;i++){h=(h*31+str.charCodeAt(i))>>>0;}return h.toString(36);}
+function getCashierMode(){try{return JSON.parse(localStorage.getItem('hesabi_cashier_mode')||'null')||{enabled:false,pinHash:''};}catch(e){return {enabled:false,pinHash:''};}}
+function setCashierMode(v){localStorage.setItem('hesabi_cashier_mode',JSON.stringify(v));}
+function enableCashierMode(){
+ const pin=(document.getElementById('ownerPin')?.value||'').trim();
+ if(!/^\d{4}$/.test(pin)){toast('أدخل رمز مكوّن من 4 أرقام بالضبط');return;}
+ setCashierMode({enabled:true,pinHash:simpleHash(pin)});
+ log('تفعيل وضع الكاشير','تم تقييد الوصول للإعدادات والتقارير');
+ applyCashierRestrictions();
+ toast('✅ تم تفعيل وضع الكاشير');
+ renderCashierStatus();
+}
+function disableCashierMode(){
+ const mode=getCashierMode();
+ if(!mode.enabled){toast('وضع الكاشير غير مفعّل أصلاً');return;}
+ const pin=prompt('أدخل رمز المالك (PIN) لإلغاء وضع الكاشير:');
+ if(pin===null)return;
+ if(simpleHash(pin.trim())!==mode.pinHash){toast('❌ رمز غير صحيح');return;}
+ setCashierMode({enabled:false,pinHash:''});
+ log('إلغاء وضع الكاشير','رجعت كل الصلاحيات للمالك');
+ applyCashierRestrictions();
+ toast('✅ تم إلغاء وضع الكاشير — كل الصفحات متاحة الآن');
+ renderCashierStatus();
+}
+function renderCashierStatus(){
+ const el=document.getElementById('cashierModeStatus');
+ if(!el)return;
+ const mode=getCashierMode();
+ el.textContent=mode.enabled?'🔒 مفعّل الآن':'غير مفعّل';
+ el.className='pill '+(mode.enabled?'bad':'');
+}
+function applyCashierRestrictions(){
+ const mode=getCashierMode();
+ document.querySelectorAll('[data-page]').forEach(btn=>{
+  const restricted=CASHIER_RESTRICTED_PAGES.includes(btn.dataset.page);
+  btn.style.display=(mode.enabled&&restricted)?'none':'';
+ });
+ document.querySelectorAll('[data-mobile-page]').forEach(btn=>{
+  const restricted=CASHIER_RESTRICTED_PAGES.includes(btn.dataset.mobilePage);
+  btn.style.display=(mode.enabled&&restricted)?'none':'';
+ });
+ // If a restricted page happens to be open when the mode turns on, bounce to dashboard.
+ if(mode.enabled){
+  const activePage=document.querySelector('.page.active')?.id;
+  if(CASHIER_RESTRICTED_PAGES.includes(activePage)) go('dashboard');
+ }
+ renderCashierStatus();
+}
 function go(p){
+ const mode=getCashierMode();
+ if(mode.enabled && CASHIER_RESTRICTED_PAGES.includes(p)){
+  const pin=prompt('هاي الصفحة محمية بوضع الكاشير. أدخل رمز المالك (PIN):');
+  if(pin===null)return;
+  if(simpleHash(pin.trim())!==mode.pinHash){toast('❌ رمز غير صحيح');return;}
+ }
  document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===p));
  document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
  renderAll();updateMobileMenuActive();window.scrollTo(0,0);
@@ -843,6 +913,7 @@ function renderAll(){
  loadSettings();
  setTheme(db.settings.theme||'dark');
  renderMore();
+ renderCashierStatus();
 }
 
 function renderDash(){
@@ -860,7 +931,10 @@ function renderDash(){
  let arr=[...db.sales.map(x=>({...x,k:'بيع',a:x.total})),...db.purchases.map(x=>({...x,k:'شراء',a:x.total})),...db.expenses.map(x=>({...x,k:'مصروف',a:x.amount}))].sort((a,b)=>(b.created||b.date).localeCompare(a.created||a.date)).slice(0,6);
  recent.innerHTML=arr.length?arr.map(x=>`<div class="row"><div><b>${esc(x.k)}</b><div class="sub">${esc(x.customerName||x.supplier||x.name||'')}</div></div><strong class="${x.k==='بيع'?'good':'bad'}">${x.k==='بيع'?'+':'-'} ${money(x.a)}</strong></div>`).join(''):'<div class="empty">لا توجد عمليات مسجلة حديثاً</div>';
  let low=db.products.filter(p=>p.qty<=Number(p.low||db.settings.low)).sort((a,b)=>a.qty-b.qty).slice(0,6);
- document.getElementById('low').innerHTML=low.length?low.map(p=>`<div class="row"><b>${esc(p.name)} (${esc(p.unit||'حبة')})</b><span class="pill ${p.qty===0?'bad':'warn'}">${p.qty===0?'نفد تماماً':'متبقي '+p.qty}</span></div>`).join(''):'<div class="empty">المخزون بحالة ممتازة وفوق حد التنبيه 🎉</div>'
+ let expiring=db.products.filter(p=>{const st=expiryStatus(p);return st&&st.days<=30;}).sort((a,b)=>new Date(a.expiry)-new Date(b.expiry)).slice(0,6);
+ let lowHtml=low.length?low.map(p=>`<div class="row"><b>${esc(p.name)} (${esc(p.unit||'حبة')})</b><span class="pill ${p.qty===0?'bad':'warn'}">${p.qty===0?'نفد تماماً':'متبقي '+p.qty}</span></div>`).join(''):'';
+ let expHtml=expiring.length?expiring.map(p=>{const st=expiryStatus(p);return `<div class="row"><b>${esc(p.name)}</b><span class="pill ${st.cls}">⏳ ${st.label}</span></div>`;}).join(''):'';
+ document.getElementById('low').innerHTML=(lowHtml+expHtml)||'<div class="empty">المخزون بحالة ممتازة وفوق حد التنبيه، ولا صلاحيات قريبة الانتهاء 🎉</div>'
 }
 
 function renderSales(){
@@ -878,7 +952,7 @@ function renderPurchases(){
 function renderInventory(){
  let q=(iq?.value||'').toLowerCase();
  let a=db.products.filter(p=>(p.name+p.sku+p.barcode+p.cat+p.subcat+p.unit).toLowerCase().includes(q));
- inventoryT.innerHTML=a.length?a.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.cat||'عام')} / ${esc(p.subcat||'فرعي')}</td><td><span class="pill">${esc(p.unit||'حبة')}</span>${p.packSize>1?` <small>↔ ${esc(p.packUnit)} × ${p.packSize}</small>`:''}</td><td><b>${p.qty}</b> ${esc(p.unit||'حبة')} ${p.packSize>1?`<small>(${(p.qty/p.packSize).toFixed(2)} ${esc(p.packUnit)})</small>`:''}</td><td>${money(p.buy)}<small>${p.packSize>1?` / ${money(p.packBuy)} ${esc(p.packUnit)}`:''}</small></td><td>${money(p.sell)}<small>${p.packSize>1?` / ${money(p.packSell)} ${esc(p.packUnit)}`:''}</small></td><td><span class="pill ${p.qty===0?'bad':p.qty<=p.low?'warn':''}">${p.qty===0?'نفد':p.qty<=p.low?'منخفض':'متوفر'}</span></td><td><button class="btn" onclick="openProduct(db.products.find(x=>x.id==='${p.id}'))">تعديل</button></td></tr>`).join(''):'<tr><td colspan="8" class="empty">لا توجد أصناف مطابقة</td></tr>'
+ inventoryT.innerHTML=a.length?a.map(p=>{const st=expiryStatus(p);return `<tr><td><b>${esc(p.name)}</b>${st?`<div class="sub ${st.cls}">⏳ ${st.label}</div>`:''}</td><td>${esc(p.cat||'عام')} / ${esc(p.subcat||'فرعي')}</td><td><span class="pill">${esc(p.unit||'حبة')}</span>${p.packSize>1?` <small>↔ ${esc(p.packUnit)} × ${p.packSize}</small>`:''}</td><td><b>${p.qty}</b> ${esc(p.unit||'حبة')} ${p.packSize>1?`<small>(${(p.qty/p.packSize).toFixed(2)} ${esc(p.packUnit)})</small>`:''}</td><td>${money(p.buy)}<small>${p.packSize>1?` / ${money(p.packBuy)} ${esc(p.packUnit)}`:''}</small></td><td>${money(p.sell)}<small>${p.packSize>1?` / ${money(p.packSell)} ${esc(p.packUnit)}`:''}</small></td><td><span class="pill ${p.qty===0?'bad':p.qty<=p.low?'warn':''}">${p.qty===0?'نفد':p.qty<=p.low?'منخفض':'متوفر'}</span></td><td><button class="btn" onclick="openProduct(db.products.find(x=>x.id==='${p.id}'))">تعديل</button></td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">لا توجد أصناف مطابقة</td></tr>'
 }
 
 function renderCustomers(){
@@ -955,11 +1029,19 @@ function uploadLogo(e){
 function removeLogo(){db.settings.logo='';save();renderLogoPreview();toast('تم إزالة الشعار');}
 
 function normalizeProduct(p){
- p={id:'',name:'',sku:'',barcode:'',cat:'',subcat:'',unit:'حبة',qty:0,buy:0,sell:0,low:db.settings.low,packUnit:'كرتونة',packSize:1,packBuy:0,packSell:0,...p};
+ p={id:'',name:'',sku:'',barcode:'',cat:'',subcat:'',unit:'حبة',qty:0,buy:0,sell:0,low:db.settings.low,packUnit:'كرتونة',packSize:1,packBuy:0,packSell:0,expiry:'',...p};
  if(!p.packSize || p.packSize<1)p.packSize=1;
  if(!p.packBuy)p.packBuy=Number(p.buy||0)*Number(p.packSize||1);
  if(!p.packSell)p.packSell=Number(p.sell||0)*Number(p.packSize||1);
  return p;
+}
+function expiryStatus(p){
+ if(!p.expiry) return null;
+ const days=Math.ceil((new Date(p.expiry+'T00:00:00').getTime()-new Date(today()+'T00:00:00').getTime())/86400000);
+ if(days<0) return {days,label:'منتهي الصلاحية',cls:'bad'};
+ if(days<=7) return {days,label:'ينتهي خلال '+days+' يوم',cls:'bad'};
+ if(days<=30) return {days,label:'ينتهي خلال '+days+' يوم',cls:'warn'};
+ return null;
 }
 function productDisplay(p){p=normalizeProduct(p);return p.packSize>1?`${p.name} — ${p.unit} / ${p.packUnit} (${p.packSize} ${p.unit})`:p.name+' — '+p.unit}
 function openProduct(p={}){
@@ -977,12 +1059,13 @@ function openProduct(p={}){
  <div class="field"><label>شراء — ${p.packUnit}</label><input id="ppbuy" type="number" step="any" class="input" value="${p.packBuy}"></div>
  <div class="field"><label>بيع — ${p.packUnit}</label><input id="ppsell" type="number" step="any" class="input" value="${p.packSell}"></div>
  <div class="field"><label>حد التنبيه</label><input id="pl" type="number" step="any" class="input" value="${p.low}"></div>
+ <div class="field"><label>تاريخ انتهاء الصلاحية (اختياري)</label><input id="pexp" type="date" class="input" value="${esc(p.expiry)}"></div>
  <div class="field"><label>الباركود أو الكود</label><div style="display:flex;gap:8px"><input id="pb" class="input" value="${esc(p.barcode)}"><button type="button" class="btn" style="flex-shrink:0" onclick="scanProductBarcode()">📷</button></div></div>
  </div><div class="hint">مثال: شكلاطة، الوحدة الأساسية = حبة، الوحدة الكبيرة = كرتونة، داخل الكرتونة = 24 حبة. البيع بالحبة يخصم 1، والبيع بالكرتونة يخصم 24.</div><div class="modal-actions"><button class="btn primary" onclick="saveProduct('${p.id}')">حفظ الصنف</button></div>`);
 }
 function saveProduct(id){
  let packSize=Math.max(1,Number(ppacksize.value)||1),buy=Number(pbu.value)||0,sell=Number(psell.value)||0;
- let p={id:id||uid('p'),name:pn.value.trim(),cat:pcat.value.trim(),subcat:psub.value.trim(),unit:punit.value,packUnit:ppackunit.value,packSize,packBuy:Number(ppbuy.value)||buy*packSize,packSell:Number(ppsell.value)||sell*packSize,barcode:pb.value.trim(),qty:Number(pq2.value)||0,buy,sell,low:Number(pl.value)||5};
+ let p={id:id||uid('p'),name:pn.value.trim(),cat:pcat.value.trim(),subcat:psub.value.trim(),unit:punit.value,packUnit:ppackunit.value,packSize,packBuy:Number(ppbuy.value)||buy*packSize,packSell:Number(ppsell.value)||sell*packSize,barcode:pb.value.trim(),qty:Number(pq2.value)||0,buy,sell,low:Number(pl.value)||5,expiry:pexp.value||''};
  if(!p.name)return toast('يرجى إدخال اسم الصنف');
  let i=db.products.findIndex(x=>x.id===p.id);
  i>=0?db.products[i]=p:db.products.push(p);
@@ -1221,7 +1304,7 @@ function saveExpense(){
 
 function viewInvoice(id){
  let x=db.sales.find(s=>s.id===id);if(!x)return;
- openModal('معاينة فاتورة: '+x.code,`<div style="text-align:center;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+ openModal('معاينة فاتورة: '+x.code,`<div id="thermalInvoice" style="text-align:center;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
  ${db.settings.logo?`<img src="${db.settings.logo}" style="width:56px;height:56px;object-fit:cover;border-radius:14px;margin-bottom:8px">`:''}
  <h3>${esc(db.settings.business)}</h3><p class="sub">فاتورة مبيعات ${x.type} — ${fmt(x.date)}</p>
  </div>
@@ -1233,8 +1316,35 @@ function viewInvoice(id){
  <h4>الإجمالي الكلي: ${money(x.total)}</h4>
  </div>
  <div style="text-align:center;margin-top:14px"><canvas id="invQR"></canvas><p class="sub" style="margin-top:6px">امسح الكود للتأكد من تفاصيل الفاتورة</p></div>
- <div class="modal-actions"><button class="btn primary" onclick="window.print()">🖨 طباعة</button></div>`);
+ <div class="modal-actions">
+   <button class="btn" onclick="printThermal(58)">🧾 طباعة حرارية 58mm</button>
+   <button class="btn" onclick="printThermal(80)">🧾 طباعة حرارية 80mm</button>
+   <button class="btn primary" onclick="window.print()">🖨 طباعة عادية</button>
+ </div>`);
  renderInvoiceQR(`فاتورة: ${x.code}\n${db.settings.business}\nالعميل: ${x.customerName}\nالتاريخ: ${x.date}\nالإجمالي: ${money(x.total)}`);
+}
+
+// Prints the currently-open invoice preview at receipt-printer width (58mm
+// or 80mm) instead of A4, by temporarily switching the @page size before
+// calling window.print(). Reverts automatically after printing.
+function printThermal(widthMm){
+ const style=document.createElement('style');
+ style.id='thermalPrintStyle';
+ style.textContent=`
+  @page{ size:${widthMm}mm auto; margin:2mm; }
+  @media print{
+   body *{ visibility:hidden !important; }
+   #mb, #mb *{ visibility:visible !important; }
+   #mb{ position:fixed; inset:0; background:#fff !important; }
+   .mh, .close, .modal-actions{ display:none !important; }
+   .modal{ box-shadow:none !important; border:0 !important; max-width:${widthMm}mm !important; width:${widthMm}mm !important; padding:2mm !important; color:#000 !important; background:#fff !important; }
+   #thermalInvoice, #thermalInvoice *{ color:#000 !important; }
+   .table{ font-size:${widthMm===58?'10px':'11px'} !important; }
+   .table th, .table td{ padding:3px 2px !important; }
+  }`;
+ document.head.appendChild(style);
+ window.print();
+ setTimeout(()=>{ const s=document.getElementById('thermalPrintStyle'); if(s) s.remove(); }, 500);
 }
 
 function viewPurchase(id){
@@ -1585,7 +1695,7 @@ function applyQuickCount(){
  save();closeQuickCount();renderAll();toast(`تم تحديث ${ids.length} صنف بنجاح`);
 }
 
-window.onload=renderAll;
+window.onload=function(){ renderAll(); applyCashierRestrictions(); };
 </script>
 
 <script>
