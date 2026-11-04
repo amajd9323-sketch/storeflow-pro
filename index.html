@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070D0B">
 <link rel="manifest" href="manifest.webmanifest">
-<title>حسابي Pro — POS & Inventory Management — V11 Purchase System</title>
-<meta name="app-version" content="V9.1-PAYMENTS-CONTACT">
+<title>حسابي Pro — POS & Inventory Management — V3.3.0</title>
+<meta name="app-version" content="V3.3.0-ANDROID-MOBILE">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Readex+Pro:wght@300;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.23.0/umd/index.min.js"></script>
@@ -356,7 +356,7 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
 <meta name="theme-color" content="#0b0f14">
 <meta name="description" content="حسابي Pro — Professional POS, inventory, sales and business management system.">
 <meta name="application-name" content="حسابي Pro">
-<meta name="mobile-ui-version" content="6.0">
+<meta name="mobile-ui-version" content="7.0">
 <meta name="product-license" content="Single Business License">
 <style id="hesabi-license-ui">
 .license-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card-glow);font-size:11px;color:var(--accent);font-weight:700}
@@ -480,6 +480,64 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
 }
 @media(min-width:701px){.mobile-command-nav.mobile-v6{display:none!important}}
 </style>
+
+<style id="hesabi-mobile-stability-v11">
+/* Phone stability: preserve table headers, avoid overlapping floating actions,
+   and keep dialogs usable above the keyboard. */
+.mobile-menu-open{overflow:hidden!important}
+@media(max-width:700px){
+  #globalPurchaseBtn{display:none!important}
+  .table-wrap{
+    display:block!important;width:100%!important;max-width:100%!important;
+    overflow-x:auto!important;overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain;
+    border:1px solid var(--line)!important;border-radius:16px!important;
+    background:var(--card)!important;
+  }
+  .table{
+    display:table!important;width:max-content!important;min-width:100%!important;
+    border-collapse:separate!important;border-spacing:0!important;font-size:12px!important;
+  }
+  .table thead{display:table-header-group!important}
+  .table tbody{display:table-row-group!important;width:auto!important}
+  .table tr{
+    display:table-row!important;width:auto!important;margin:0!important;padding:0!important;
+    border:0!important;border-radius:0!important;background:transparent!important;
+  }
+  .table th,.table td{
+    display:table-cell!important;min-width:82px;max-width:260px;
+    padding:11px 10px!important;white-space:nowrap!important;
+    border-bottom:1px solid var(--line)!important;vertical-align:middle!important;
+  }
+  .table td:before{content:none!important;display:none!important}
+  .table tbody tr:nth-child(even){background:var(--card-glow)!important}
+  .table .btn{min-height:40px!important;padding:8px 10px!important;white-space:nowrap}
+  .modalbg{align-items:flex-end!important;padding:10px!important}
+  .modal{
+    width:100%!important;max-width:100%!important;margin:0!important;
+    max-height:calc(92dvh - var(--mobile-safe-bottom))!important;
+    padding:18px 14px!important;border-radius:22px 22px 14px 14px!important;
+  }
+  .modal-actions{gap:8px!important;flex-wrap:wrap!important}
+  .modal-actions .btn{flex:1 1 140px}
+  .input,.modal select,.modal textarea{font-size:16px!important}
+  .mobile-menu-backdrop{overscroll-behavior:contain;touch-action:pan-y}
+  .mobile-menu-panel{
+    padding-bottom:calc(16px + var(--mobile-safe-bottom))!important;
+    overscroll-behavior:contain;
+  }
+  .mobile-menu-item,.mobile-menu-action{touch-action:manipulation}
+  #purchaseOverlay{align-items:flex-end!important;padding:8px!important}
+  #purchaseOverlay .purchase-card{
+    width:100%!important;max-height:calc(92dvh - var(--mobile-safe-bottom))!important;
+    border-radius:22px 22px 14px 14px!important;padding:18px 14px!important;
+  }
+}
+@media(max-width:430px){
+  .mobile-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+</style>
+
 </head>
 <body><button type="button" id="globalPurchaseBtn" onclick="openPurchaseModal()" style="position:fixed;left:16px;bottom:18px;z-index:12000;border:0;border-radius:14px;padding:12px 16px;background:#24d66b;color:#06120a;font-weight:900;box-shadow:0 8px 25px rgba(0,0,0,.25);cursor:pointer">🛒 شراء النسخة</button>
 
@@ -666,7 +724,7 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
 </div>
 
 <div class="section card"><h2>💳 حالة الخطة والاشتراك</h2><div id="planStatusBox" class="acctBox" style="margin-top:8px"></div><div class="actions" style="margin-top:12px"><button class="btn primary" onclick="showPlans()">عرض الخطط</button><button class="btn" onclick="startDemoTrial()">🎁 تشغيل تجربة 3 أيام</button></div></div>
-  <div class="section card"><h2>النسخ الاحتياطي وإدارة البيانات</h2><p class="sub">تصدير أو استيراد قاعدة البيانات بالكامل بصيغة JSON لضمان الأمان الكامل.</p><div class="actions" style="margin-top:12px"><button class="btn" onclick="backup()">⬇ تصدير نسخة احتياطية</button><label class="btn">⬆ استيراد نسخة<input type="file" accept=".json" style="display:none" onchange="restore(event)"></label><button class="btn danger" onclick="resetData()">حذف وتصفير البيانات</button></div></div>
+  <div class="section card"><h2>النسخ الاحتياطي وإدارة البيانات</h2><p class="sub">تصدير أو استيراد قاعدة البيانات بالكامل بصيغة JSON لضمان الأمان الكامل.</p><div class="actions" style="margin-top:12px"><button class="btn" onclick="backup()">⬇ تصدير نسخة احتياطية</button><label class="btn">⬆ استيراد نسخة<input id="backupFileInput" type="file" accept=".json" style="display:none" onchange="restore(event)"></label><button class="btn danger" onclick="resetData()">حذف وتصفير البيانات</button></div></div>
 </section>
 
 <!-- MORE -->
@@ -688,12 +746,12 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
 <nav class="bottom mobile-command-nav mobile-v6" aria-label="تنقل الهاتف الجديد">
   <button type="button" class="mobile-home-btn" onclick="mobileGo('dashboard')"><span class="ico">⌂</span><small>الرئيسية</small></button>
   <button type="button" class="mobile-pos-btn" onclick="openPOS()"><span class="ico">⚡</span><small>بيع سريع</small></button>
-  <button type="button" class="mobile-all-btn" onclick="toggleMobileMenu(true)" aria-label="كل الميزات"><span class="ico">☰</span><small>كل الميزات</small><b class="mobile-menu-badge">11+</b></button>
+  <button type="button" class="mobile-all-btn" onclick="toggleMobileMenu(true)" aria-label="كل الميزات" aria-controls="mobileMenu" aria-expanded="false"><span class="ico">☰</span><small>كل الميزات</small><b class="mobile-menu-badge">11+</b></button>
 </nav>
 
 
 <!-- ===== مركز الميزات الكامل للهاتف ===== -->
-<div id="mobileMenu" class="mobile-menu-backdrop" onclick="if(event.target===this)toggleMobileMenu(false)">
+<div id="mobileMenu" class="mobile-menu-backdrop" aria-hidden="true" onclick="if(event.target===this)toggleMobileMenu(false)">
   <div class="mobile-menu-panel" role="dialog" aria-modal="true" aria-labelledby="mobileMenuTitle">
     <div class="mobile-menu-head">
       <div>
@@ -729,12 +787,15 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
       <button class="mobile-menu-action" onclick="mobileAction(openQuickCount)">📦 جرد سريع</button>
       <button class="mobile-menu-action" onclick="mobileAction(openMarketPrices)">🇵🇸 أسعار السوق</button>
       <button class="mobile-menu-action" onclick="mobileAction(showInstallGuide)">📲 تثبيت التطبيق</button>
+      <button class="mobile-menu-action" onclick="mobileAction(openSupplier)">🏭 إضافة مورد</button>
+      <button class="mobile-menu-action" onclick="mobileAction(mobileImportBackup)">⬆ استيراد نسخة احتياطية</button>
     </div>
 
     <div class="mobile-menu-section">الحساب والنظام</div>
     <div class="mobile-menu-actions">
       <button class="mobile-menu-action" onclick="mobileAction(backup)">⬇ نسخة احتياطية</button>
-      <button class="mobile-menu-action" onclick="mobileAction(showPlans)">💳 الخطط والشراء</button>
+      <button class="mobile-menu-action" onclick="mobileAction(showPlans)">💳 الخطط والاشتراك</button>
+      <button class="mobile-menu-action" onclick="mobileAction(openPurchaseModal)">🛒 شراء النسخة</button>
       <button class="mobile-menu-action" onclick="mobileAction(setTheme, db.settings.theme==='dark'?'light':'dark')">🌓 تبديل المظهر</button>
       <button class="mobile-menu-action danger" onclick="mobileAction(doLogout)">🚪 تسجيل خروج</button>
     </div>
@@ -745,6 +806,9 @@ button,.btn,.nav button,.action,.icon-btn{min-height:48px}
       <button class="mobile-menu-action" onclick="mobileAction(inventoryAdjust)">📋 تسوية الجرد</button>
       <button class="mobile-menu-action" onclick="mobileAction(exportCSV,'sales')">📤 تصدير المبيعات CSV</button>
       <button class="mobile-menu-action" onclick="mobileAction(exportCSV,'purchases')">📤 تصدير المشتريات CSV</button>
+      <button class="mobile-menu-action" onclick="mobileAction(exportCSV,'inventory')">📦 تصدير المخزون CSV</button>
+      <button class="mobile-menu-action" onclick="mobileAction(exportCSV,'customers')">👥 تصدير العملاء CSV</button>
+      <button class="mobile-menu-action" onclick="mobileAction(exportCSV,'expenses')">💸 تصدير المصروفات CSV</button>
       <button class="mobile-menu-action" onclick="mobileAction(shareLastInvoice)">📲 مشاركة آخر فاتورة</button>
       <button class="mobile-menu-action" onclick="mobileAction(clearAudit)">🧹 إدارة سجل العمليات</button>
     </div>
@@ -811,12 +875,18 @@ function toast(x){let t=document.getElementById('toast');t.textContent=x;t.class
 function toggleMobileMenu(show){
   const m=document.getElementById('mobileMenu');
   if(!m)return;
-  m.classList.toggle('show',!!show);
-  if(show){
-    document.body.style.overflow='hidden';
+  const opening=!!show;
+  const opener=document.querySelector('.mobile-all-btn');
+  m.classList.toggle('show',opening);
+  m.setAttribute('aria-hidden',String(!opening));
+  document.body.classList.toggle('mobile-menu-open',opening);
+  if(opener)opener.setAttribute('aria-expanded',String(opening));
+  if(opening){
     updateMobileMenuActive();
-  }else{
-    document.body.style.overflow='';
+    const closeButton=m.querySelector('.mobile-menu-close');
+    if(closeButton)closeButton.focus({preventScroll:true});
+  }else if(m.contains(document.activeElement) && opener){
+    opener.focus({preventScroll:true});
   }
 }
 function updateMobileMenuActive(){
@@ -830,6 +900,10 @@ function mobileGo(p){
 function mobileAction(fn,...args){
   toggleMobileMenu(false);
   setTimeout(()=>{try{fn(...args)}catch(e){console.error(e)}},30);
+}
+function mobileImportBackup(){
+  const picker=document.getElementById('backupFileInput');
+  if(picker)picker.click();
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape') toggleMobileMenu(false);
