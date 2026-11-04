@@ -1,0 +1,82 @@
+name: Hesabi Pro Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "icon-192.png"
+      - "icon-512.png"
+      - "package.json"
+      - "capacitor.config.json"
+      - "scripts/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools, platforms;android-34, build-tools;34.0.0"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Check app scripts and phone menu
+        run: npm run check
+
+      - name: Prepare Capacitor Android project
+        run: npm run android:prepare
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Stage APK
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/hesabi-pro-3.3.0-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hesabi-pro-3.3.0-android-apk
+          path: release/hesabi-pro-3.3.0-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v3.3.0-\${{ github.run_number }}
+          name: Hesabi Pro Android APK 3.3.0 (\${{ github.run_number }})
+          body: |
+            Hesabi Pro 3.3.0 Android build.
+            Debug-signed APK for installation and testing.
+          files: release/hesabi-pro-3.3.0-debug.apk
+          target_commitish: main
+          make_latest: true
