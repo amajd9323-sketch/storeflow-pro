@@ -1,0 +1,6 @@
+{
+  "appId": "com.hesabi.pro",
+  "appName": "حسابي Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
